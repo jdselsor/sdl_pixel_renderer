@@ -10,6 +10,7 @@
 #include <stdbool.h>
 
 #include <SDL2/SDL.h>
+#include <string.h>
 
 #define ASSERT(_e, ...) if(!(_e)) { fprintf(stderr, __VA_ARGS__); exit(1); }
 
@@ -63,6 +64,14 @@ void free_buffer (FrameBuffer* buffer);
 
 void swap_buffers (void);
 
+typedef struct {
+	u32 width;
+	u32 height;
+	u32* pixels;
+} Image;
+
+void load_image (Image* image, const char* filename);
+
 #define BLACK		0x000000
 #define WHITE		0xFFFFFF
 #define RED			0x880000
@@ -80,7 +89,7 @@ void swap_buffers (void);
 #define LIGHT_BLUE	0x0088FF
 #define LIGHT_GREY	0xBBBBBB
 
-#define ALPHA_COLOR 0xFF00FF
+#define ALPHA_COLOR 0xFFFF00FF
 
 void render (void);
 
@@ -152,6 +161,9 @@ int main (int argc, char* argv[]) {
 	front_buffer = &buffers[0];
 	back_buffer = &buffers[1];
 
+	Image image;
+	load_image(&image, "./res/font.bmp");
+
 	while (!state.quit) {
 		SDL_Event event;
 
@@ -166,6 +178,21 @@ int main (int argc, char* argv[]) {
 		memset(state.pixels, 0, sizeof (state.pixels));
 
 		//fill_rect(10, 10, 100, 100, WHITE);
+		/*for (int i = 0; i < (image.width * image.height); i++) {
+			//printf("%X\n", image.pixels[i]);
+			back_buffer->pixels[i] = image.pixels[i];
+		}*/
+
+		for (usize x = 0; x < image.width; x++) {
+			for (usize y = 0; y < image.height; y++) {
+				if (image.pixels[image.width * y + x] == ALPHA_COLOR) {
+					printf("Hit alpha color\n");
+					//back_buffer->pixels[back_buffer->width * y + x] = 0xFF00FF00;
+					continue;
+				}
+				back_buffer->pixels[back_buffer->width * y + x] = image.pixels[image.width * y + x];
+			}
+		}
 
 		render();
 
@@ -228,6 +255,83 @@ void swap_buffers () {
 	clear_buffer(back_buffer);
 }
 
+// BMP file format
+//
+// Section
+//		Address: Bytes		Name
+//
+// Header
+//		0:		2		"BM" Magic number
+//		2:		4		file size
+//		6:		4		junk
+//	   10:		4		Starting address of image data
+// BITMAP HEADER
+//		14:		4		Header Size
+//		18:		4		width(signed)
+//		22:		4		height(signed)
+//		26:		2		Number of color planes
+//		28:		2		Bits Per pixel
+//		[...]
+//	[Optional Color palette, Not present in 32 bit bitmaps]
+//
+//	Data: X Pixels
+void load_image (Image* image, const char* filename) {
+	u32 image_data_address;
+	i32 width, height;
+	u32 pixel_count;
+	u16 bit_depth;
+	u8 byte_depth;
+
+	u32* pixels;
+
+	printf("Loading bitmap file: %s\n", filename);
+
+	FILE *file;
+	file = fopen(filename, "rb");
+
+	if (file) {
+		if(fgetc(file) == 'B' && fgetc(file) == 'M') {
+			printf("BM read; bitmap file confirmed.\n");
+			fseek(file, 8, SEEK_CUR);
+			fread(&image_data_address, 4, 1, file);
+			fseek(file, 4, SEEK_CUR);
+			fread(&width, 4, 1, file);
+			fread(&height, 4, 1, file);
+			fseek(file, 2, SEEK_CUR);
+			fread(&bit_depth, 2, 1, file);
+
+			ASSERT(bit_depth == 32, "(%s) Bit Depth expected %d is %d", filename, 32, bit_depth);
+
+			printf("image data address:\t%d\nwidth:\t\t\t%d pix\nheight:\t\t\t%d pix\nbit depth:\t\t%d bpp\n", image_data_address, width, height, bit_depth);
+
+			pixel_count = width * height;
+			byte_depth = bit_depth / 8;
+			pixels = malloc(pixel_count * byte_depth);
+
+			if (pixels) {
+				fseek(file, image_data_address, SEEK_SET);
+				int pixels_read = fread(pixels, byte_depth, pixel_count, file);
+				printf("Read %d pixels\n", pixels_read);
+
+				if (pixels_read == pixel_count) {
+					image->width = width;
+					image->height = height;
+					image->pixels = pixels;
+				} else {
+					printf("(%s) Read pixel count incorrect. Is %d expected %d", filename, pixels_read, pixel_count);
+					free(pixels);
+				}
+			} else {
+				printf("(%s) Failed to allocated %d pixels.\n", filename, pixel_count);
+			}
+		} else {
+			printf("(%s) frist two bytes of file are not \"BM\"", filename);
+		}
+
+		fclose(file);
+	}
+}
+
 void render () {
 	for (usize x = 0; x < SCREEN_WIDTH; x++) {
 		for (usize y = 0; y < SCREEN_HEIGHT; y++) {
@@ -241,7 +345,7 @@ void fill_rect (usize x, usize y, usize width, usize height, u32 color) {
 	for (usize i = 0; i < width; i++) {
 		for (usize j = 0; j < height; j++) {
 			//back_buffer->pixels[((y + j) * width) + (x + i)] = color;
-			back_buffer->pixels[(back_buffer->width * (x + i)) + (y + j)] = color;
+			back_buffer->pixels[(back_buffer->width * (y + j)) + (x + i)] = color;
 		}
 	}
 }
