@@ -1,4 +1,7 @@
+#include <SDL2/SDL_error.h>
+#include <SDL2/SDL_pixels.h>
 #include <SDL2/SDL_render.h>
+#include <SDL2/SDL_surface.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_video.h>
 #include <stdio.h>
@@ -28,6 +31,10 @@ typedef int64_t		i64;
 typedef size_t		usize;
 typedef ssize_t		isize;
 
+typedef uint16_t	WORD;
+typedef uint32_t	DWORD;
+typedef uint64_t	QWORD;
+
 struct {
 	SDL_Window *window;
 	SDL_Texture *texture;
@@ -56,7 +63,28 @@ void free_buffer (FrameBuffer* buffer);
 
 void swap_buffers (void);
 
+#define BLACK		0x000000
+#define WHITE		0xFFFFFF
+#define RED			0x880000
+#define CYAN		0xAAFFEE
+#define PURPLE		0xCC44CC
+#define GREEN		0x00CC55
+#define BLUE		0x0000AA
+#define YELLOW		0xEEEE77
+#define ORANGE		0xDD8855
+#define BROWN		0x664400
+#define LIGHT_RED	0xFF7777
+#define DARK_GREY	0x333333
+#define GREY		0x777777
+#define LIGHT_GREEN	0xAAFF66
+#define LIGHT_BLUE	0x0088FF
+#define LIGHT_GREY	0xBBBBBB
+
+#define ALPHA_COLOR 0xFF00FF
+
 void render (void);
+
+void fill_rect (usize x, usize y, usize width, usize height, u32 color);
 
 int main (int argc, char* argv[]) {
 
@@ -137,10 +165,7 @@ int main (int argc, char* argv[]) {
 
 		memset(state.pixels, 0, sizeof (state.pixels));
 
-		for(int i = 0; i < (SCREEN_WIDTH * SCREEN_HEIGHT); i++) {
-			//front_buffer->pixels[i] = 0xFF00FF;
-			back_buffer->pixels[i] = 0x00FF00;
-		}
+		//fill_rect(10, 10, 100, 100, WHITE);
 
 		render();
 
@@ -156,9 +181,9 @@ int main (int argc, char* argv[]) {
 				SDL_FLIP_VERTICAL
 		);
 
-		SDL_RenderPresent(state.renderer);
-
 		swap_buffers();
+
+		SDL_RenderPresent(state.renderer);
 	}
 
 	free_buffer(&buffers[0]);
@@ -195,17 +220,28 @@ void free_buffer(FrameBuffer* buffer) {
 }
 
 void swap_buffers () {
-
 	FrameBuffer* t = front_buffer;
 	front_buffer = back_buffer;
 	back_buffer = t;
+	
+	//clear_buffer(front_buffer);
+	clear_buffer(back_buffer);
 }
 
 void render () {
-	for (int x = 0; x < SCREEN_WIDTH; x++) {
-		for (int y = 0; y < SCREEN_HEIGHT; y++) {
+	for (usize x = 0; x < SCREEN_WIDTH; x++) {
+		for (usize y = 0; y < SCREEN_HEIGHT; y++) {
 			u32 pixel = front_buffer->pixels[(y * front_buffer->width) + x];
 			state.pixels[(y * SCREEN_WIDTH) + x] = pixel;
+		}
+	}
+}
+
+void fill_rect (usize x, usize y, usize width, usize height, u32 color) {
+	for (usize i = 0; i < width; i++) {
+		for (usize j = 0; j < height; j++) {
+			//back_buffer->pixels[((y + j) * width) + (x + i)] = color;
+			back_buffer->pixels[(back_buffer->width * (x + i)) + (y + j)] = color;
 		}
 	}
 }
