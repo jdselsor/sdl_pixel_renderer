@@ -72,6 +72,7 @@ typedef struct {
 
 void load_image (Image* image, const char* filename);
 
+// TODO: change to ABGR format in RGBA
 #define BLACK		0x000000
 #define WHITE		0xFFFFFF
 #define RED			0x880000
@@ -177,19 +178,13 @@ int main (int argc, char* argv[]) {
 
 		memset(state.pixels, 0, sizeof (state.pixels));
 
-		//fill_rect(10, 10, 100, 100, WHITE);
-		/*for (int i = 0; i < (image.width * image.height); i++) {
-			//printf("%X\n", image.pixels[i]);
-			back_buffer->pixels[i] = image.pixels[i];
-		}*/
-
 		for (usize x = 0; x < image.width; x++) {
 			for (usize y = 0; y < image.height; y++) {
 				if (image.pixels[image.width * y + x] == ALPHA_COLOR) {
 					printf("Hit alpha color\n");
-					//back_buffer->pixels[back_buffer->width * y + x] = 0xFF00FF00;
 					continue;
 				}
+
 				back_buffer->pixels[back_buffer->width * y + x] = image.pixels[image.width * y + x];
 			}
 		}
@@ -302,7 +297,13 @@ void load_image (Image* image, const char* filename) {
 
 			ASSERT(bit_depth == 32, "(%s) Bit Depth expected %d is %d", filename, 32, bit_depth);
 
-			printf("image data address:\t%d\nwidth:\t\t\t%d pix\nheight:\t\t\t%d pix\nbit depth:\t\t%d bpp\n", image_data_address, width, height, bit_depth);
+			printf(
+				"image data address:\t%d\nwidth:\t\t\t%d pix\nheight:\t\t\t%d pix\nbit depth:\t\t%d bpp\n", 
+				image_data_address, 
+				width, 
+				height, 
+				bit_depth
+			);
 
 			pixel_count = width * height;
 			byte_depth = bit_depth / 8;
@@ -318,11 +319,21 @@ void load_image (Image* image, const char* filename) {
 					image->height = height;
 					image->pixels = pixels;
 				} else {
-					printf("(%s) Read pixel count incorrect. Is %d expected %d", filename, pixels_read, pixel_count);
+					printf(
+						"(%s) Read pixel count incorrect. Is %d expected %d", 
+						filename, 
+						pixels_read, 
+						pixel_count
+					);
+
 					free(pixels);
 				}
 			} else {
-				printf("(%s) Failed to allocated %d pixels.\n", filename, pixel_count);
+				printf(
+					"(%s) Failed to allocated %d pixels.\n", 
+					filename, 
+					pixel_count
+				);
 			}
 		} else {
 			printf("(%s) frist two bytes of file are not \"BM\"", filename);
@@ -344,7 +355,6 @@ void render () {
 void fill_rect (usize x, usize y, usize width, usize height, u32 color) {
 	for (usize i = 0; i < width; i++) {
 		for (usize j = 0; j < height; j++) {
-			//back_buffer->pixels[((y + j) * width) + (x + i)] = color;
 			back_buffer->pixels[(back_buffer->width * (y + j)) + (x + i)] = color;
 		}
 	}
